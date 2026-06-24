@@ -7,6 +7,6 @@
 
 
 ## How to run program
->> 
+>> g++ -std=c++17 Main.cpp Process.cpp FCFSScheduler.cpp StatusReport.cpp ProcessRegistry.cpp ProcessFactory.cpp -o csopesy.exe
 
 **Entry class file:** Main.cpp

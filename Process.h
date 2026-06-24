@@ -1,0 +1,37 @@
+#pragma once
+
+#include <atomic>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "ICommand.h"
+
+class Process {
+private:
+	int pid;
+	std::string name;
+	int totalInstructions;
+	std::atomic<int> remainingInstructions;
+	std::atomic<int> instructionCounter;
+	std::string outputFileName;
+
+	std::vector<std::shared_ptr<ICommand>> instructionList;
+
+public:
+	Process(const std::string& processName, int processId, int numInstructions);
+
+	void addInstruction(const std::shared_ptr<ICommand>& command);
+	void executeCurrentInstruction(int coreId);
+	void moveToNextInstruction();
+	int getRemainingInstructions() const;
+	bool hasFinished() const;
+	int getPID() const;
+	void setPID(int newPid);
+	const std::string& getName() const;
+	int getTotalInstructions() const;
+	int getCompletedInstructions() const;
+	const std::string& getOutputFileName() const;
+};
+
+
