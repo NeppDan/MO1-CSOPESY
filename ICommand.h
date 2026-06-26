@@ -6,7 +6,12 @@ class ICommand
 {
 public:
     enum CommandType {
-        PRINT
+        PRINT,
+        DECLARE,
+        ADD,
+        SUBTRACT,
+        SLEEP,
+        FOR
     };
 
     ICommand(int pid, CommandType commandType);
