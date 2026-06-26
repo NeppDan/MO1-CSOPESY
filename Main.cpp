@@ -223,7 +223,14 @@ int main()
             scheduler->stop();
             std::cout << "Scheduler stopped.\n";
         } else if (command == "report-util") {
-            std::cout << "report-util command will be implemented soon.\n";
+            std::ofstream reportUtilFile("csopesy-log.txt");
+            if(reportUtilFile.is_open()){
+                reportUtilFile << StatusReport::buildScreenList(appState);
+                reportUtilFile.close();
+                std::cout << "Report generated at csopesy-log.txt!\n";
+            } else {
+                std::cerr << "Error: Could not open the file csopesy-log.txt\n";
+            }
         } else if (command == "screen -s") {
             std::cout << "Use: screen -s <process name>\n";
         } else if (command.rfind("screen -s ", 0) == 0) {
