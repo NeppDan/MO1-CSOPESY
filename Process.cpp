@@ -9,6 +9,7 @@ Process::Process(const std::string& processName, int processId, int numInstructi
       remainingInstructions(numInstructions),
       instructionCounter(0),
       outputFileName(processName + ".txt")
+      
 {
     std::ofstream file(outputFileName, std::ios::trunc);
     if (file.is_open()) {
@@ -84,4 +85,9 @@ int Process::getCompletedInstructions() const
 const std::string& Process::getOutputFileName() const
 {
     return outputFileName;
+}
+
+SymbolTable& Process::getSymbolTable()
+{
+    return symbolTable;
 }

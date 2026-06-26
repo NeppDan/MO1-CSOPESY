@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "ICommand.h"
+#include "SymbolTable.h"
 
 class Process {
 private:
@@ -16,7 +17,9 @@ private:
 	std::atomic<int> instructionCounter;
 	std::string outputFileName;
 
+	SymbolTable symbolTable;
 	std::vector<std::shared_ptr<ICommand>> instructionList;
+
 
 public:
 	Process(const std::string& processName, int processId, int numInstructions);
@@ -32,6 +35,8 @@ public:
 	int getTotalInstructions() const;
 	int getCompletedInstructions() const;
 	const std::string& getOutputFileName() const;
+
+	SymbolTable& getSymbolTable();
 };
 
 
