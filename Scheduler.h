@@ -3,33 +3,77 @@
 
 #include "AppState.h"
 
-#include <chrono>
-#include <ctime>
-#include <iomanip>
-#include <sstreaS>
+#include <condition_variable>
+#include <deque>
+#include <map>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <vector>
+
+class ProcessRegistry;
+struct AppState;
 
 class Scheduler {
-public:
-	Scheduler(int cores);
+protected: 
+	enum class ProcessState {
+		WAITING,
+		RUNNING,
+		FINISHED
+	};
 
-private: 
-	void setRegistry();
-	void setAppState();
-	
-	void addProcess();
-	void start();
-	void stop();
+	struct ProcessSnapshot {
+		std::shared_ptr<Process> process;
+		ProcessState state;
+		int coreID;
+		std::string stateTimestamp;
+	};
 
-	void isFinished();
-	void screenLS();
-	void updateProcessState();
+	struct CoreWorker {
+		std::thread thread;
+		std::mutex mutex;
+		std::conditional_variable cv;
+		std::shared_ptr<Process> assignedProcess;
+		bool hasWork = false;
+		bool stopRequested = false;
+	};
+
+	int numCores;
+	std::deque<std::shared_ptr<Process>> readyQueue;
+	std::vector<std::unique_ptr<CoreWorker>> workers;
+	std::thread schedulerThread;
+	std::thread tickThread;
+	std::mutex queueMutex;
+	std::condition_variable queueCv;
+	mutable std::mutex stateMutex;
+	std::map<int, ProcessSnapshot> snapshots;
+	bool acceptingWork;
+	bool stopRequested;
+	ProcessRegistry* registry = nullptr;
+	AppState* appState = nullptr;
 
 	void schedulerLoop();
 	void tickLoop();
+	void updateProcessState(const std::shared_ptr<Process>& process, ProcessState state, int coreId);
+	static std::string buildTimestamp();
 
-public: 
-	int cores;
+	// For FCFS
+	virtual void workerLoop(int coreId) = 0;
 
-}
+
+public:
+	explicit Scheduler(int cores);
+	virtual ~Scheduler() = default; 
+
+	void setRegistry(ProcessRegistry* reg);
+	void setAppState(AppState* state);
+	void addProcess(const std::shared_ptr<Process>& process);
+	void start();
+	void stop();
+	bool isFinished() const;
+	std::string screenLs() const;
+};
+
 
 	
