@@ -3,6 +3,7 @@
 
 #include "AppState.h"
 #include "Process.h"
+#include "Timestamp.h"
 
 #include <condition_variable>
 #include <deque>
@@ -13,6 +14,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+
 
 class ProcessRegistry;
 struct AppState;
@@ -62,7 +64,6 @@ protected:
 	void tickLoop();
 	void maybeSpawnBatchProcess(long long currentTick);
 	void updateProcessState(const std::shared_ptr<Process>& process, ProcessState state, int coreId);
-	static std::string buildTimestamp();
 
 	// For FCFS
 	virtual void workerLoop(int coreId) = 0;

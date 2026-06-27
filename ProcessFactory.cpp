@@ -1,4 +1,5 @@
 #include "ProcessFactory.h"
+#include "Timestamp.h"
 
 #include "Process.h"
 #include "ICommand.h"
@@ -13,19 +14,7 @@
 #include <cstdlib>
 #include <utility>
 
-namespace {
-std::string buildTimestamp()
-{
-    const auto now = std::chrono::system_clock::now();
-    const std::time_t time = std::chrono::system_clock::to_time_t(now);
-    std::tm localTime{};
-    localtime_s(&localTime, &time);
 
-    std::ostringstream builder;
-    builder << std::put_time(&localTime, "%m/%d/%Y %I:%M:%S%p");
-    return builder.str();
-}
-}
 
 std::shared_ptr<Process> ProcessFactory::createDummyProcess(
     const std::string& name,

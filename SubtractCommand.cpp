@@ -1,4 +1,5 @@
 #include "SubtractCommand.h"
+#include "Timestamp.h"
 
 #include <iostream>
 #include <chrono>
@@ -8,20 +9,6 @@
 #include <cstdint>
 #include <tuple>
 
-namespace {
-std::string buildTimestamp()
-{
-    const auto now = std::chrono::system_clock::now();
-    const std::time_t nowTime = std::chrono::system_clock::to_time_t(now);
-
-    std::tm localTime{};
-    localtime_s(&localTime, &nowTime);
-
-    std::ostringstream builder;
-    builder << std::put_time(&localTime, "%m/%d/%Y %I:%M:%S%p");
-    return builder.str();
-}
-}
 
 // SUBTRACT(var1, var2, var3)
 SubtractCommand::SubtractCommand(int pid, std::string var1, std::string var2, std::string var3, SymbolTable& symbolTable)

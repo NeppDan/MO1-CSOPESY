@@ -1,4 +1,5 @@
 #include "DeclareCommand.h"
+#include "Timestamp.h"
 
 #include <iostream>
 #include <chrono>
@@ -7,20 +8,7 @@
 #include <utility>
 #include <cstdint>
 
-namespace {
-std::string buildTimestamp()
-{
-    const auto now = std::chrono::system_clock::now();
-    const std::time_t nowTime = std::chrono::system_clock::to_time_t(now);
 
-    std::tm localTime{};
-    localtime_s(&localTime, &nowTime);
-
-    std::ostringstream builder;
-    builder << std::put_time(&localTime, "%m/%d/%Y %I:%M:%S%p");
-    return builder.str();
-}
-}
 
 DeclareCommand::DeclareCommand(int pid, std::string varName, uint16_t value, SymbolTable& symbolTable)
     : ICommand(pid, DECLARE), varName(std::move(varName)), value(std::move(value)), symbolTable(symbolTable)

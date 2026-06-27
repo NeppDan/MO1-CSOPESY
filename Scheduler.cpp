@@ -12,19 +12,6 @@
 #include <iomanip>
 #include <sstream>
 
-namespace {
-std::string formatTimestamp(const std::chrono::system_clock::time_point& point)
-{
-	const std::time_t rawTime = std::chrono::system_clock::to_time_t(point);
-	std::tm localTime{};
-	localtime_s(&localTime, &rawTime);
-
-	std::ostringstream builder;
-	builder << std::put_time(&localTime, "%m/%d/%Y %I:%M:%S%p");
-	return builder.str();
-}
-}
-
 Scheduler::Scheduler(int cores)
 	: numCores(cores), acceptingWork(true), stopRequested(false)
 {
@@ -32,11 +19,6 @@ Scheduler::Scheduler(int cores)
 	for (int coreId = 0; coreId < numCores; ++coreId) {
 		workers.push_back(std::make_unique<CoreWorker>());
 	}
-}
-
-std::string Scheduler::buildTimestamp()
-{
-	return formatTimestamp(std::chrono::system_clock::now());
 }
 
 void Scheduler::setRegistry(ProcessRegistry* reg)

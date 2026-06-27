@@ -36,6 +36,8 @@ public:
 	int getCompletedInstructions() const;
 	const std::string& getOutputFileName() const;
 
+	int getCurrentInstructionSleepTicks() const;
+
 	SymbolTable& getSymbolTable();
 };
 
