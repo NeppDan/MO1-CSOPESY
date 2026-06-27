@@ -91,3 +91,12 @@ SymbolTable& Process::getSymbolTable()
 {
     return symbolTable;
 }
+
+int Process::getCurrentInstructionSleepTicks() const
+{
+    int counter = instructionCounter.load();
+    if (counter < 0 || counter >= static_cast<int>(instructionList.size())) {
+        return 0;
+    }
+    return instructionList[counter]->getSleepTicks();
+}

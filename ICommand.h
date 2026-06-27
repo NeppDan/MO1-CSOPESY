@@ -20,6 +20,7 @@ public:
     CommandType getCommandType() const;
     virtual void execute(int coreId, const std::string& processName, const std::string& outputFile) = 0;
 
+    virtual int getSleepTicks() const { return 0; }
 protected:
     int pid;
     CommandType commandType;
