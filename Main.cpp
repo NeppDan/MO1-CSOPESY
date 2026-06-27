@@ -407,16 +407,6 @@ int main()
             }
             setBatchGenerationEnabled(true);
             startActiveScheduler();
-            syncProcessCounter(registry, processCounter);
-            for (int i = 0; i < 3; ++i) {
-                std::ostringstream nameBuilder;
-                nameBuilder << "p" << std::setfill('0') << std::setw(2) << processCounter++;
-                auto process = ProcessFactory::createDummyProcess(nameBuilder.str(), i, config);
-                int pid = registry.addProcess(process, nameBuilder.str());
-                process->setPID(pid);
-                addProcessToActiveScheduler(process);
-            }
-            std::cout << "Scheduler started. Processes generated.\n";
         } else if (command == "scheduler-stop") {
             if ((useRoundRobin && !rrScheduler) || (!useRoundRobin && !fcfsScheduler)) {
                 std::cout << "Scheduler not initialized.\n";
@@ -445,7 +435,6 @@ int main()
                 const int pid = registry.addProcess(process, processName);
                 process->setPID(pid);
                 addProcessToActiveScheduler(process);
-                setBatchGenerationEnabled(false);
                 runProcessScreen(processName, registry, true);
             }
         } else if (command == "screen -r") {

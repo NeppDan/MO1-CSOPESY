@@ -5,6 +5,7 @@
 #include <chrono>
 #include <ctime>
 #include <iomanip>
+#include <fstream>
 #include <utility>
 #include <cstdint>
 #include <tuple>
@@ -74,8 +75,9 @@ void SubtractCommand::execute(int coreId, const std::string& processName, const 
 {  
     auto [op2, op3, diff] = performOperation();
 
-    std::stringstream msg;
-    msg << buildTimestamp() << "Core: " << coreId << " Executing SUBTRACT command for PID " << this->pid 
-    << ": variable " << this->var1 << ", subtracting values " << op2 << " and " << op3 << " to equal " << diff << std::endl;
-    std::cout << msg.str();
+    std::ofstream out(outputFile, std::ios::app);
+    if (out.is_open()) {
+        out << "(" << buildTimestamp() << ") Core:" << coreId << " Executing SUBTRACT command for PID " << this->pid
+            << ": variable " << this->var1 << ", subtracting values " << op2 << " and " << op3 << " to equal " << diff << "\n";
+    }
 }

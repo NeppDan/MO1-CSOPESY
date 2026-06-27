@@ -5,6 +5,7 @@
 #include <chrono>
 #include <ctime>
 #include <iomanip>
+#include <fstream>
 #include <utility>
 #include <cstdint>
 
@@ -24,8 +25,9 @@ void DeclareCommand::execute(int coreId, const std::string& processName, const s
 {
     performDeclaration();
 
-    std::stringstream msg;
-    msg << buildTimestamp() << "Core: " << coreId << " Executing DECLARE command for PID " << this->pid 
-    << ": variable " << this->varName << " with value " << this->value << std::endl;
-    std::cout << msg.str();
+    std::ofstream out(outputFile, std::ios::app);
+    if (out.is_open()) {
+        out << "(" << buildTimestamp() << ") Core:" << coreId << " Executing DECLARE command for PID " << this->pid
+            << ": variable " << this->varName << " with value " << this->value << "\n";
+    }
 }

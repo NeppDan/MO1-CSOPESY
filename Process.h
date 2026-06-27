@@ -35,6 +35,7 @@ public:
 	int getTotalInstructions() const;
 	int getCompletedInstructions() const;
 	const std::string& getOutputFileName() const;
+	void setTotalInstructions(int totalInstructionsCount);
 
 	int getCurrentInstructionSleepTicks() const;
 

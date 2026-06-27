@@ -5,6 +5,7 @@
 #include <chrono>
 #include <ctime>
 #include <iomanip>
+#include <fstream>
 #include <utility>
 #include <cstdint>
 #include <tuple>
@@ -68,8 +69,9 @@ void AddCommand::execute(int coreId, const std::string& processName, const std::
 {  
     auto [op2, op3, sum] = performOperation();
 
-    std::stringstream msg;
-    msg << buildTimestamp() << "Core: " << coreId << " Executing ADD command for PID " << this->pid 
-    << ": variable " << this->var1 << ", adding values " << op2 << " and " << op3 << " to equal " << sum << std::endl;
-    std::cout << msg.str();
+    std::ofstream out(outputFile, std::ios::app);
+    if (out.is_open()) {
+        out << "(" << buildTimestamp() << ") Core:" << coreId << " Executing ADD command for PID " << this->pid
+            << ": variable " << this->var1 << ", adding values " << op2 << " and " << op3 << " to equal " << sum << "\n";
+    }
 }

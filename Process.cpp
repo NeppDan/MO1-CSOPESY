@@ -77,6 +77,13 @@ int Process::getTotalInstructions() const
     return totalInstructions;
 }
 
+void Process::setTotalInstructions(int totalInstructionsCount)
+{
+    totalInstructions = totalInstructionsCount;
+    remainingInstructions.store(totalInstructionsCount);
+    instructionCounter.store(0);
+}
+
 int Process::getCompletedInstructions() const
 {
     return totalInstructions - remainingInstructions.load();
