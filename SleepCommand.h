@@ -2,9 +2,13 @@
 
 #include<ICommand.h>
 
-class sleepCommand : public ICommand {
+class SleepCommand : public ICommand {
 public:
-	sleepCommand(int ticks);
-	
+	SleepCommand(int pid, uint8_t ticks);
 
+	void execute(int coreId, const std::string& processName, const std::string& outputFile) override;
+	int getSleepTicks() const override;
+
+private:
+	uint8_t ticks;
 };
