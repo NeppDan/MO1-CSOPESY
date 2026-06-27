@@ -3,13 +3,29 @@
 #include "Process.h"
 #include "ICommand.h"
 
+#include <ctime>
+#include <iomanip>
+#include <sstream>
 #include <thread>
 #include <chrono>
 #include <fstream>
 
 #include <cstdlib>
-#include <ctime>
-#include <sstream>
+#include <utility>
+
+namespace {
+std::string buildTimestamp()
+{
+    const auto now = std::chrono::system_clock::now();
+    const std::time_t time = std::chrono::system_clock::to_time_t(now);
+    std::tm localTime{};
+    localtime_s(&localTime, &time);
+
+    std::ostringstream builder;
+    builder << std::put_time(&localTime, "%m/%d/%Y %I:%M:%S%p");
+    return builder.str();
+}
+}
 
 std::shared_ptr<Process> ProcessFactory::createDummyProcess(
     const std::string& name,
@@ -31,23 +47,24 @@ std::shared_ptr<Process> ProcessFactory::createDummyProcess(
     // Create simple dummy instructions so the process has an instruction list
     struct DummyInstruction : public ICommand {
         int delayMs;
-        DummyInstruction(int pid, int delay)
-            : ICommand(pid, ICommand::PRINT), delayMs(delay) {}
+        std::string processName;
+
+        DummyInstruction(int pid, int delay, std::string name)
+            : ICommand(pid, ICommand::PRINT), delayMs(delay), processName(std::move(name)) {}
 
         void execute(int coreId, const std::string& /*processName*/, const std::string& outputFile) override {
             if (delayMs > 0) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(delayMs));
             }
-            // Append a tiny log entry so process output exists
             std::ofstream out(outputFile, std::ios::app);
             if (out.is_open()) {
-                out << "Executed on core " << coreId << "\n";
+                out << "(" << buildTimestamp() << ") Core:" << coreId << " \"Hello world from " << processName << "!\"\n";
             }
         }
     };
 
     for (int i = 0; i < instructionCount; ++i) {
-        process->addInstruction(std::make_shared<DummyInstruction>(index, config.delayPerExec));
+        process->addInstruction(std::make_shared<DummyInstruction>(index, config.delayPerExec, name));
     }
 
     return process;

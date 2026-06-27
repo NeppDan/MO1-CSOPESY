@@ -1,9 +1,13 @@
 #include "Scheduler.h"
 
 #include "AppState.h"
+#include "Config.h"
+#include "ProcessFactory.h"
 #include "ProcessRegistry.h"
 
+#include <algorithm>
 #include <chrono>
+#include <cctype>
 #include <ctime>
 #include <iomanip>
 #include <sstream>
@@ -43,6 +47,11 @@ void Scheduler::setRegistry(ProcessRegistry* reg)
 void Scheduler::setAppState(AppState* state)
 {
 	appState = state;
+}
+
+void Scheduler::setBatchGenerationEnabled(bool enabled)
+{
+	batchGenerationEnabled = enabled;
 }
 
 void Scheduler::addProcess(const std::shared_ptr<Process>& process)
@@ -249,9 +258,60 @@ void Scheduler::tickLoop()
 		}
 
 		if (appState != nullptr) {
-			appState->cpuCycles.fetch_add(1);
+			const long long currentTick = appState->cpuCycles.fetch_add(1) + 1;
+			maybeSpawnBatchProcess(currentTick);
 		}
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
+}
+
+void Scheduler::maybeSpawnBatchProcess(long long currentTick)
+{
+	if (appState == nullptr || appState->config == nullptr || appState->registry == nullptr) {
+		return;
+	}
+
+	if (!batchGenerationEnabled) {
+		return;
+	}
+
+	const Config& config = *appState->config;
+	if (config.batchProcessFreq <= 0) {
+		return;
+	}
+
+	if (currentTick < config.batchProcessFreq) {
+		return;
+	}
+
+	if (currentTick % config.batchProcessFreq != 0) {
+		return;
+	}
+
+	if (lastBatchSpawnTick == currentTick) {
+		return;
+	}
+
+	lastBatchSpawnTick = currentTick;
+
+	const auto existingProcesses = appState->registry->getAllProcesses();
+	for (const auto& process : existingProcesses) {
+		if (process.name.size() >= 2 && process.name[0] == 'p') {
+			const std::string suffix = process.name.substr(1);
+			if (!suffix.empty() && std::all_of(suffix.begin(), suffix.end(), [](unsigned char ch) { return std::isdigit(ch) != 0; })) {
+				const int numericId = std::stoi(suffix);
+				if (numericId >= nextGeneratedProcessIndex) {
+					nextGeneratedProcessIndex = numericId + 1;
+				}
+			}
+		}
+	}
+
+	std::ostringstream nameBuilder;
+	nameBuilder << "p" << std::setfill('0') << std::setw(2) << nextGeneratedProcessIndex++;
+	auto process = ProcessFactory::createDummyProcess(nameBuilder.str(), nextGeneratedProcessIndex, config);
+	int pid = appState->registry->addProcess(process, nameBuilder.str());
+	process->setPID(pid);
+	addProcess(process);
 }
