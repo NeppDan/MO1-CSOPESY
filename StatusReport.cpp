@@ -15,8 +15,9 @@ std::string yesNo(bool value)
 std::string StatusReport::buildScreenList(const AppState& appState)
 {
     std::ostringstream output;
-    
-    output << "----------------------------------------\n\n";
+
+    output << "----------------------------------------\n";
+    output << "root:> screen -ls\n\n";
 
     if (!appState.initialized || appState.config == nullptr || appState.registry == nullptr) {
         output << "Please run initialize first.\n";

@@ -54,9 +54,13 @@ protected:
 	bool stopRequested;
 	ProcessRegistry* registry = nullptr;
 	AppState* appState = nullptr;
+	bool batchGenerationEnabled = false;
+	int nextGeneratedProcessIndex = 1;
+	long long lastBatchSpawnTick = 0;
 
 	void schedulerLoop();
 	void tickLoop();
+	void maybeSpawnBatchProcess(long long currentTick);
 	void updateProcessState(const std::shared_ptr<Process>& process, ProcessState state, int coreId);
 	static std::string buildTimestamp();
 
@@ -70,6 +74,7 @@ public:
 
 	void setRegistry(ProcessRegistry* reg);
 	void setAppState(AppState* state);
+	void setBatchGenerationEnabled(bool enabled);
 	void addProcess(const std::shared_ptr<Process>& process);
 	void start();
 	void stop();

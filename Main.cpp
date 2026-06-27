@@ -10,9 +10,8 @@
 #include "StatusReport.h"
 #include "ProcessRegistry.h"
 #include "ProcessFactory.h"
-#include "Scheduler.h"
-#include "RoundRobinScheduler.h"
 #include "FCFSScheduler.h"
+#include "RoundRobinScheduler.h"
 
 namespace {
 
@@ -118,15 +117,15 @@ bool parseConfig(const std::string& fileName, Config& config, std::string& error
 
 void printBanner()
 {
-    std::cout << "            .-')     _ (`-.                 ('-.    .-')                \n"
-    << "           ( OO ).  ( (OO  )              _(  OO)  ( OO ).              \n"
-    << "   .-----.(_)---\\_)_.`     \\ .-'),-----. (,------.(_)---\\_)  ,--.   ,--.\n"
-    << "  '  .--.//    _ |(__...--''( OO'  .-.  ' |  .---'/    _ |    \\  `.'  / \n"
-    << "  |  |('-.\\  :` `. |  /  | |/   |  | |  | |  |    \\  :` `.  .-')     /  \n"
-    << " /_) |OO  )'..`''.)|  |_.' |\\_) |  |\\|  |(|  '--.  '..`''.)(OO  \\   /  \n"
-    << " ||  |`-'|.-._)   \\|  .___.'  \\ |  | |  | |  .--' .-._)   \\ |   /  /\\_  \n"
-    << "(_'  '--'\\\\       /|  |        `'  '-'  ' |  `---.\\       / `-./  /.__) \n"
-    << "   `-----' `-----' `--'          `-----'  `------' `-----'    `--'      \n";
+    std::cout << "            .-')                   _ (`-.    ('-.    .-')                \n"
+    << "           ( OO ).                ( (OO  ) _(  OO)  ( OO ).              \n"
+    << "   .-----.(_)---\\_) .-'),-----.  _.`     \\(,------.(_)---\\_)  ,--.   ,--.\n"
+    << "  '  .--.//    _ | ( OO'  .-.  '(__...--'' |  .---'/    _ |    \\  `.'  / \n"
+    << "  |  |('-.\\  :` `. /   |  | |  | |  /  | | |  |    \\  :` `.  .-')     /  \n"
+    << " /_) |OO  )'..`''.)\\_) |  |\\|  | |  |_.' |(|  '--.  '..`''.)(OO  \\   /   \n"
+    << " ||  |`-'|.-._)   \\  \\ |  | |  | |  .___.' |  .--' .-._)   \\ |   /  /\\_  \n"
+    << "(_'  '--'\\\\       /   `'  '-'  ' |  |      |  `---.\\       / `-./  /.__) \n"
+    << "   `-----' `-----'      `-----'  `--'      `------' `-----'    `--'      \n";
 
     std::cout << "-----------------------------------------------------------------------\n";
     std::cout << "Welcome to the CSOPESY Emulator!\n\n";
@@ -143,6 +142,151 @@ void printMenuPrompt()
 {
     std::cout << "root:> ";
 }
+
+void clearConsole()
+{
+    std::cout << "\x1B[2J\x1B[H";
+}
+
+void enterAlternateScreen()
+{
+    std::cout << "\x1B[?1049h\x1B[2J\x1B[H";
+}
+
+void exitAlternateScreen()
+{
+    std::cout << "\x1B[?1049l";
+}
+
+std::string readFileContents(const std::string& fileName)
+{
+    std::ifstream file(fileName);
+    if (!file.is_open()) {
+        return "";
+    }
+
+    std::ostringstream output;
+    output << file.rdbuf();
+    return output.str();
+}
+
+std::string readProcessLogs(const std::string& fileName)
+{
+    std::ifstream file(fileName);
+    if (!file.is_open()) {
+        return "";
+    }
+
+    std::string line;
+    int lineNumber = 0;
+    std::ostringstream output;
+    while (std::getline(file, line)) {
+        ++lineNumber;
+        if (lineNumber <= 2) {
+            continue;
+        }
+        output << line << '\n';
+    }
+
+    return output.str();
+}
+
+void syncProcessCounter(ProcessRegistry& registry, int& processCounter)
+{
+    const auto processes = registry.getAllProcesses();
+    for (const auto& process : processes) {
+        if (process.name.size() >= 2 && process.name[0] == 'p') {
+            const std::string suffix = process.name.substr(1);
+            bool numeric = !suffix.empty();
+            for (char ch : suffix) {
+                if (!std::isdigit(static_cast<unsigned char>(ch))) {
+                    numeric = false;
+                    break;
+                }
+            }
+
+            if (numeric) {
+                const int numericId = std::stoi(suffix);
+                if (numericId >= processCounter) {
+                    processCounter = numericId + 1;
+                }
+            }
+        }
+    }
+}
+
+void printProcessSmi(const ProcessStatusEntry& entry)
+{
+    const std::string logFile = entry.name + ".txt";
+    const std::string logs = readProcessLogs(logFile);
+
+    std::cout << "Process name: " << entry.name << '\n';
+    std::cout << "ID: " << entry.pid << '\n';
+    std::cout << "Logs:\n";
+    if (!logs.empty()) {
+        std::cout << logs;
+    }
+
+    std::cout << "Current instruction line: " << entry.completedInstructions << '\n';
+    std::cout << "Lines of code: " << entry.totalInstructions << '\n';
+    if (entry.finished) {
+        std::cout << "Finished!\n";
+    }
+}
+
+void writeReportUtil(const AppState& appState)
+{
+    std::ofstream file("csopesy-log.txt", std::ios::trunc);
+    if (!file.is_open()) {
+        std::cout << "Unable to write csopesy-log.txt\n";
+        return;
+    }
+
+    file << StatusReport::buildScreenList(appState);
+    std::cout << "Report written to csopesy-log.txt\n";
+}
+
+void runProcessScreen(const std::string& processName, ProcessRegistry& registry, bool allowFinishedAccess)
+{
+    ProcessStatusEntry entry;
+    if (!registry.findByName(processName, entry) || (!allowFinishedAccess && entry.finished)) {
+        std::cout << "Process " << processName << " not found.\n";
+        return;
+    }
+
+    enterAlternateScreen();
+    std::cout << "Process screen: " << processName << "\n";
+
+    std::string command;
+    while (true) {
+        printMenuPrompt();
+        if (!std::getline(std::cin, command)) {
+            break;
+        }
+
+        command = trim(command);
+        if (command.empty()) {
+            continue;
+        }
+
+        if (command == "exit") {
+            exitAlternateScreen();
+            break;
+        }
+
+        if (command == "process-smi") {
+            ProcessStatusEntry currentEntry;
+            if (!registry.findByName(processName, currentEntry)) {
+                std::cout << "Process " << processName << " not found.\n";
+                continue;
+            }
+
+            printProcessSmi(currentEntry);
+        } else {
+            std::cout << "Unrecognized command.\n";
+        }
+    }
+}
 }
 
 namespace {
@@ -157,8 +301,51 @@ int main()
     appState.config = &config;
     appState.registry = &registry;
 
-    std::unique_ptr<Scheduler> scheduler;
+    std::unique_ptr<FCFSScheduler> fcfsScheduler;
+    std::unique_ptr<RoundRobinScheduler> rrScheduler;
+    bool useRoundRobin = false;
     bool initialized = false;
+    bool schedulerRunning = false;
+
+    auto startActiveScheduler = [&]() {
+        if (schedulerRunning) {
+            return;
+        }
+        if (useRoundRobin) {
+            rrScheduler->start();
+        } else {
+            fcfsScheduler->start();
+        }
+        schedulerRunning = true;
+    };
+
+    auto stopActiveScheduler = [&]() {
+        if (!schedulerRunning) {
+            return;
+        }
+        if (useRoundRobin) {
+            rrScheduler->stop();
+        } else {
+            fcfsScheduler->stop();
+        }
+        schedulerRunning = false;
+    };
+
+    auto addProcessToActiveScheduler = [&](const std::shared_ptr<Process>& process) {
+        if (useRoundRobin) {
+            rrScheduler->addProcess(process);
+        } else {
+            fcfsScheduler->addProcess(process);
+        }
+    };
+
+    auto setBatchGenerationEnabled = [&](bool enabled) {
+        if (useRoundRobin) {
+            rrScheduler->setBatchGenerationEnabled(enabled);
+        } else {
+            fcfsScheduler->setBatchGenerationEnabled(enabled);
+        }
+    };
 
     printBanner();
 
@@ -187,16 +374,20 @@ int main()
 
             initialized = true;
             appState.initialized = true;
-
-            if (config.scheduler == "fcfs") {
-                scheduler = std::make_unique<FCFSScheduler>(config.numCpu);
+            useRoundRobin = (config.scheduler == "rr");
+            if (useRoundRobin) {
+                rrScheduler = std::make_unique<RoundRobinScheduler>(config.numCpu, config.quantumCycles);
+                rrScheduler->setRegistry(&registry);
+                rrScheduler->setAppState(&appState);
+                rrScheduler->setBatchGenerationEnabled(false);
+                fcfsScheduler.reset();
+            } else {
+                fcfsScheduler = std::make_unique<FCFSScheduler>(config.numCpu);
+                fcfsScheduler->setRegistry(&registry);
+                fcfsScheduler->setAppState(&appState);
+                fcfsScheduler->setBatchGenerationEnabled(false);
+                rrScheduler.reset();
             }
-            else if (config.scheduler == "rr") {
-                scheduler = std::make_unique<RoundRobinScheduler>(config.numCpu, config.quantumCycles);
-            }
-
-            scheduler->setRegistry(&registry);
-            scheduler->setAppState(&appState);
             processCounter = 1;
             std::cout << "Initialized with " << config.numCpu << " CPU(s), scheduler " << config.scheduler << ".\n";
             continue;
@@ -210,44 +401,62 @@ int main()
         if (command == "screen -ls") {
             std::cout << StatusReport::buildScreenList(appState);
         } else if (command == "scheduler-start") {
-            if (!scheduler) {
+            if ((useRoundRobin && !rrScheduler) || (!useRoundRobin && !fcfsScheduler)) {
                 std::cout << "Scheduler not initialized.\n";
                 continue;
             }
-            scheduler->start();
+            setBatchGenerationEnabled(true);
+            startActiveScheduler();
+            syncProcessCounter(registry, processCounter);
             for (int i = 0; i < 3; ++i) {
                 std::ostringstream nameBuilder;
                 nameBuilder << "p" << std::setfill('0') << std::setw(2) << processCounter++;
                 auto process = ProcessFactory::createDummyProcess(nameBuilder.str(), i, config);
                 int pid = registry.addProcess(process, nameBuilder.str());
                 process->setPID(pid);
-                scheduler->addProcess(process);
+                addProcessToActiveScheduler(process);
             }
             std::cout << "Scheduler started. Processes generated.\n";
         } else if (command == "scheduler-stop") {
-            if (!scheduler) {
+            if ((useRoundRobin && !rrScheduler) || (!useRoundRobin && !fcfsScheduler)) {
                 std::cout << "Scheduler not initialized.\n";
                 continue;
             }
-            scheduler->stop();
+            stopActiveScheduler();
             std::cout << "Scheduler stopped.\n";
         } else if (command == "report-util") {
-            std::ofstream reportUtilFile("csopesy-log.txt");
-            if(reportUtilFile.is_open()){
-                reportUtilFile << StatusReport::buildScreenList(appState);
-                reportUtilFile.close();
-                std::cout << "Report generated at csopesy-log.txt!\n";
-            } else {
-                std::cerr << "Error: Could not open the file csopesy-log.txt\n";
-            }
+            writeReportUtil(appState);
         } else if (command == "screen -s") {
             std::cout << "Use: screen -s <process name>\n";
         } else if (command.rfind("screen -s ", 0) == 0) {
-            std::cout << "screen session creation will be added soon.\n";
+            const std::string processName = trim(command.substr(10));
+            if (processName.empty()) {
+                std::cout << "Use: screen -s <process name>\n";
+            } else {
+                startActiveScheduler();
+                syncProcessCounter(registry, processCounter);
+                ProcessStatusEntry existingEntry;
+                if (registry.findByName(processName, existingEntry)) {
+                    std::cout << "Process " << processName << " already exists.\n";
+                    continue;
+                }
+
+                auto process = ProcessFactory::createDummyProcess(processName, processCounter++, config);
+                const int pid = registry.addProcess(process, processName);
+                process->setPID(pid);
+                addProcessToActiveScheduler(process);
+                setBatchGenerationEnabled(false);
+                runProcessScreen(processName, registry, true);
+            }
         } else if (command == "screen -r") {
             std::cout << "Use: screen -r <process name>\n";
         } else if (command.rfind("screen -r ", 0) == 0) {
-            std::cout << "screen session resume will be added soon.\n";
+            const std::string processName = trim(command.substr(10));
+            if (processName.empty()) {
+                std::cout << "Use: screen -r <process name>\n";
+            } else {
+                runProcessScreen(processName, registry, false);
+            }
         } else {
             std::cout << "Unrecognized command.\n";
         }
