@@ -1,15 +1,16 @@
-#include "FCFSScheduler.h"
+#include "RoundRobinScheduler.h"
 
-FCFSScheduler::FCFSScheduler(int cores) : Scheduler(cores){
+RoundRobinScheduler::RoundRobinScheduler(int cores, int quantumCycles)
+	: Scheduler(cores), quantum(quantumCycles)
+{
 }
 
-FCFSScheduler::~FCFSScheduler()
+RoundRobinScheduler::~RoundRobinScheduler()
 {
 	stop();
 }
 
-
-void FCFSScheduler::workerLoop(int coreId)
+void RoundRobinScheduler::workerLoop(int coreId)
 {
 	auto& worker = workers[coreId];
 	while (true) {
@@ -18,7 +19,7 @@ void FCFSScheduler::workerLoop(int coreId)
 			std::unique_lock<std::mutex> workerLock(worker->mutex);
 			worker->cv.wait(workerLock, [&]() {
 				return worker->hasWork || worker->stopRequested;
-			});
+				});
 
 			if (worker->stopRequested) {
 				break;
@@ -28,13 +29,22 @@ void FCFSScheduler::workerLoop(int coreId)
 		}
 
 		if (process) {
-			while (!process->hasFinished()) {
+			int executed = 0;
+			while (executed < quantum && !process->hasFinished()) {
 				process->executeCurrentInstruction(coreId);
 				process->moveToNextInstruction();
 				updateProcessState(process, ProcessState::Running, coreId);
+				++executed;
 			}
 
-			updateProcessState(process, ProcessState::Finished, coreId);
+			if (process->hasFinished()) {
+				updateProcessState(process, ProcessState::Finished, coreId);
+			}
+			else {
+				updateProcessState(process, ProcessState::Waiting, -1);
+				std::lock_guard<std::mutex> queueLock(queueMutex);
+				readyQueue.push_back(process); // back of the line
+			}
 		}
 
 		{
@@ -45,5 +55,3 @@ void FCFSScheduler::workerLoop(int coreId)
 		queueCv.notify_all();
 	}
 }
-
-

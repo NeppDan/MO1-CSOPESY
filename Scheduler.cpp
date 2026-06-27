@@ -9,16 +9,16 @@
 #include <sstream>
 
 namespace {
-	std::string formatTimestamp(const std::chrono::system_clock::time_point& point)
-	{
-		const std::time_t rawTime = std::chrono::system_clock::to_time_t(point);
-		std::tm localTime{};
-		localtime_s(&localTime, &rawTime);
+std::string formatTimestamp(const std::chrono::system_clock::time_point& point)
+{
+	const std::time_t rawTime = std::chrono::system_clock::to_time_t(point);
+	std::tm localTime{};
+	localtime_s(&localTime, &rawTime);
 
-		std::ostringstream builder;
-		builder << std::put_time(&localTime, "%m/%d/%Y %I:%M:%S%p");
-		return builder.str();
-	}
+	std::ostringstream builder;
+	builder << std::put_time(&localTime, "%m/%d/%Y %I:%M:%S%p");
+	return builder.str();
+}
 }
 
 Scheduler::Scheduler(int cores)
@@ -139,10 +139,10 @@ std::string Scheduler::screenLs() const
 		const auto& snapshot = entry.second;
 		if (snapshot.state == ProcessState::Running) {
 			output << snapshot.process->getName()
-				<< "  (" << snapshot.stateTimestamp << ")"
-				<< "    Core: " << snapshot.coreId
-				<< "    " << snapshot.process->getCompletedInstructions()
-				<< " / " << snapshot.process->getTotalInstructions() << '\n';
+				   << "  (" << snapshot.stateTimestamp << ")"
+				   << "    Core: " << snapshot.coreId
+				   << "    " << snapshot.process->getCompletedInstructions()
+				   << " / " << snapshot.process->getTotalInstructions() << '\n';
 		}
 	}
 
@@ -151,10 +151,10 @@ std::string Scheduler::screenLs() const
 		const auto& snapshot = entry.second;
 		if (snapshot.state == ProcessState::Finished) {
 			output << snapshot.process->getName()
-				<< "  (" << snapshot.stateTimestamp << ")"
-				<< "    Finished"
-				<< "    " << snapshot.process->getCompletedInstructions()
-				<< " / " << snapshot.process->getTotalInstructions() << '\n';
+				   << "  (" << snapshot.stateTimestamp << ")"
+				   << "    Finished"
+				   << "    " << snapshot.process->getCompletedInstructions()
+				   << " / " << snapshot.process->getTotalInstructions() << '\n';
 		}
 	}
 	output << "----------------------------------------\n";
@@ -172,8 +172,7 @@ void Scheduler::updateProcessState(const std::shared_ptr<Process>& process, Proc
 	if (registry) {
 		if (state == ProcessState::Running) {
 			registry->updateRunning(process->getPID(), coreId, process->getCompletedInstructions());
-		}
-		else if (state == ProcessState::Finished) {
+		} else if (state == ProcessState::Finished) {
 			registry->markFinished(process->getPID(), process->getCompletedInstructions());
 		}
 	}
@@ -208,7 +207,7 @@ void Scheduler::schedulerLoop()
 					}
 				}
 				return false;
-				});
+			});
 
 			if (stopRequested) {
 				break;

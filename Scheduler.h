@@ -2,8 +2,10 @@
 
 
 #include "AppState.h"
+#include "Process.h"
 
 #include <condition_variable>
+#include <deque>
 #include <deque>
 #include <map>
 #include <memory>
@@ -18,22 +20,22 @@ struct AppState;
 class Scheduler {
 protected: 
 	enum class ProcessState {
-		WAITING,
-		RUNNING,
-		FINISHED
+		Waiting,
+		Finished,
+		Running
 	};
 
 	struct ProcessSnapshot {
 		std::shared_ptr<Process> process;
 		ProcessState state;
-		int coreID;
+		int coreId;
 		std::string stateTimestamp;
 	};
 
 	struct CoreWorker {
 		std::thread thread;
 		std::mutex mutex;
-		std::conditional_variable cv;
+		std::condition_variable cv;
 		std::shared_ptr<Process> assignedProcess;
 		bool hasWork = false;
 		bool stopRequested = false;

@@ -10,6 +10,8 @@
 #include "StatusReport.h"
 #include "ProcessRegistry.h"
 #include "ProcessFactory.h"
+#include "Scheduler.h"
+#include "RoundRobinScheduler.h"
 #include "FCFSScheduler.h"
 
 namespace {
@@ -155,7 +157,7 @@ int main()
     appState.config = &config;
     appState.registry = &registry;
 
-    std::unique_ptr<FCFSScheduler> scheduler;
+    std::unique_ptr<Scheduler> scheduler;
     bool initialized = false;
 
     printBanner();
@@ -185,7 +187,14 @@ int main()
 
             initialized = true;
             appState.initialized = true;
-            scheduler = std::make_unique<FCFSScheduler>(config.numCpu);
+
+            if (config.scheduler == "fcfs") {
+                scheduler = std::make_unique<FCFSScheduler>(config.numCpu);
+            }
+            else if (config.scheduler == "rr") {
+                scheduler = std::make_unique<RoundRobinScheduler>(config.numCpu, config.quantumCycles);
+            }
+
             scheduler->setRegistry(&registry);
             scheduler->setAppState(&appState);
             processCounter = 1;
