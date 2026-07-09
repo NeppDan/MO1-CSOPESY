@@ -1,15 +1,13 @@
 #pragma once
 #include <string>
+#include "IMemoryAllocator.h"
 
-class FlatMemoryAllocator
+class FlatMemoryAllocator : public IMemoryAllocator
 {
-private:
-	int id;
-	string name;
-	uint8_t size;
-
 public:
-	void allocate();
-	void deallocate();
-
+	FlatMemoryAllocator(size_t totalSize);
+	~FlatMemoryAllocator();
+	void* allocate(size_t size) override;
+	void deallocate(void* ptr) override;
+	std::string visualizeMemory() override;
 }
