@@ -15,6 +15,8 @@ private:
 	size_t maximumSize;
 	size_t allocatedSize;
 	std::vector<char>memory;
+	std::unordered_map<size_t, bool> allocationMap;;
+
 	std::fill(allocationMap.begin(), allocationMap.end(), false);
 
 	bool canAlocateAt(size_t index, size_t size) const;
