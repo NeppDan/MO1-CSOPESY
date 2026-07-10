@@ -10,4 +10,7 @@ struct Config {
     int minIns = 1;
     int maxIns = 1;
     int delayPerExec = 0;
+    size_t maxOverallMem = 1;
+    size_t memPerFrame = 1;
+    size_t memPerProc = 1;
 };

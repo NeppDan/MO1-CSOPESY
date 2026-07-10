@@ -2,15 +2,15 @@
 
 #include <fstream>
 
-Process::Process(const std::string& processName, int processId, int numInstructions)
+Process::Process(const std::string& processName, int processId, int numInstructions, size_t memoryRequired)
     : pid(processId),
     name(processName),
     totalInstructions(numInstructions),
     remainingInstructions(numInstructions),
     instructionCounter(0),
     outputFileName(processName + ".txt"),
-    memoryRequired(0);
-      
+    memoryRequired(memoryRequired)
+
 {
     std::ofstream file(outputFileName, std::ios::trunc);
     if (file.is_open()) {

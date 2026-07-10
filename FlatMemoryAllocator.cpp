@@ -2,7 +2,7 @@
 #include "FlatMemoryAllocator.h"
 
 FlatMemoryAllocator::FlatMemoryAllocator(size_t maximumSize) :
-	maximumsSize(maximumSize),
+	maximumSize(maximumSize),
 	allocatedSize(0),
 	memory.reserve(maximumSize),
 	initializeMemory();
@@ -12,8 +12,8 @@ FlatMemoryAllocator::~FlatMemoryAllocator() {
 	memory.clear();
 }
 
-void FlatMemoryAllocator::allocate(size_t size){
-	for (size_t i = 0; i <= maximumsSize - size; ++i) {
+void* FlatMemoryAllocator::allocate(size_t size){
+	for (size_t i = 0; i <= maximumSize - size; ++i) {
 		if (!allocationMap[i] && canAllocateAt(1, size)) {
 			allocateAt(i, size);
 			return &memory[i];
@@ -31,8 +31,8 @@ void FlatMemoryAllocator::deallocate(void* ptr) {
 }
 
 
-void FlatMemoryAllocator::visualizeMemory(){
-	sreturn std::string(memory.begin(), memory.end());
+std::string FlatMemoryAllocator::visualizeMemory(){
+	return std::string(memory.begin(), memory.end());
 }
 
 void FlatMemoryAllocator::initializeMemory() {
