@@ -7,6 +7,6 @@
 
 
 ## How to run program
->> g++ -std=c++17 Main.cpp Process.cpp Scheduler.cpp RoundRobinScheduler.cpp FCFSScheduler.cpp StatusReport.cpp ProcessRegistry.cpp ProcessFactory.cpp ForCommand.cpp DeclareCommand.cpp AddCommand.cpp SubtractCommand.cpp PrintCommand.cpp SleepCommand.cpp -o csopesy.exe
+>> g++ -std=c++17 Main.cpp Process.cpp Scheduler.cpp RoundRobinScheduler.cpp FCFSScheduler.cpp StatusReport.cpp ProcessRegistry.cpp ProcessFactory.cpp ForCommand.cpp DeclareCommand.cpp AddCommand.cpp SubtractCommand.cpp PrintCommand.cpp SleepCommand.cpp FlatMemoryAllocator.cpp -o csopesy.exe
 
 **Entry class file:** Main.cpp
