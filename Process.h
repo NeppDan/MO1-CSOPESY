@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "ICommand.h"
+#include "IMemoryAllocator.h"
 #include "SymbolTable.h"
 
 class Process {
@@ -20,14 +21,16 @@ private:
 	SymbolTable symbolTable;
 	std::vector<std::shared_ptr<ICommand>> instructionList;
 
+	size_t memoryRequired;
+
 
 public:
-	Process(const std::string& processName, int processId, int numInstructions);
+	Process(const std::string& processName, int processId, int numInstructions, size_t memoryRequired);
 
 	void addInstruction(const std::shared_ptr<ICommand>& command);
 	void executeCurrentInstruction(int coreId);
 	void moveToNextInstruction();
-	int getRemainingInstructions() const;
+	int getRemainingInstructions() const; 
 	bool hasFinished() const;
 	int getPID() const;
 	void setPID(int newPid);

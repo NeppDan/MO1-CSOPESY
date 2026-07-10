@@ -4,11 +4,12 @@
 
 Process::Process(const std::string& processName, int processId, int numInstructions)
     : pid(processId),
-      name(processName),
-      totalInstructions(numInstructions),
-      remainingInstructions(numInstructions),
-      instructionCounter(0),
-      outputFileName(processName + ".txt")
+    name(processName),
+    totalInstructions(numInstructions),
+    remainingInstructions(numInstructions),
+    instructionCounter(0),
+    outputFileName(processName + ".txt"),
+    memoryRequired(0);
       
 {
     std::ofstream file(outputFileName, std::ios::trunc);
