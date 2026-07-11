@@ -9,6 +9,7 @@
 #include <chrono>
 #include <cctype>
 #include <ctime>
+#include <fstream>
 #include <iomanip>
 #include <sstream>
 
@@ -34,6 +35,11 @@ void Scheduler::setAppState(AppState* state)
 void Scheduler::setBatchGenerationEnabled(bool enabled)
 {
 	batchGenerationEnabled = enabled;
+}
+
+void Scheduler::setMemoryAllocator(IMemoryAllocator* allocator)
+{
+	memoryAllocator = allocator;
 }
 
 void Scheduler::addProcess(const std::shared_ptr<Process>& process)
@@ -130,10 +136,10 @@ std::string Scheduler::screenLs() const
 		const auto& snapshot = entry.second;
 		if (snapshot.state == ProcessState::Running) {
 			output << snapshot.process->getName()
-				   << "  (" << snapshot.stateTimestamp << ")"
-				   << "    Core: " << snapshot.coreId
-				   << "    " << snapshot.process->getCompletedInstructions()
-				   << " / " << snapshot.process->getTotalInstructions() << '\n';
+				<< "  (" << snapshot.stateTimestamp << ")"
+				<< "    Core: " << snapshot.coreId
+				<< "    " << snapshot.process->getCompletedInstructions()
+				<< " / " << snapshot.process->getTotalInstructions() << '\n';
 		}
 	}
 
@@ -142,14 +148,112 @@ std::string Scheduler::screenLs() const
 		const auto& snapshot = entry.second;
 		if (snapshot.state == ProcessState::Finished) {
 			output << snapshot.process->getName()
-				   << "  (" << snapshot.stateTimestamp << ")"
-				   << "    Finished"
-				   << "    " << snapshot.process->getCompletedInstructions()
-				   << " / " << snapshot.process->getTotalInstructions() << '\n';
+				<< "  (" << snapshot.stateTimestamp << ")"
+				<< "    Finished"
+				<< "    " << snapshot.process->getCompletedInstructions()
+				<< " / " << snapshot.process->getTotalInstructions() << '\n';
 		}
 	}
 	output << "----------------------------------------\n";
 	return output.str();
+}
+
+bool Scheduler::tryAcquireMemory(const std::shared_ptr<Process>& process)
+{
+	if (memoryAllocator == nullptr || !process) {
+		return true; // no memory manager configured; nothing to enforce
+	}
+
+	const int pid = process->getPID();
+
+	std::lock_guard<std::mutex> lock(memoryMutex);
+
+	if (processMemory.count(pid) > 0) {
+		// Already resident (e.g. requeued mid-quantum). Per spec, a
+		// process stays in memory for its whole execution, so it does
+		// not need to be re-allocated just because it's being
+		// dispatched again.
+		return true;
+	}
+
+	const size_t size = process->getMemoryRequired();
+	void* ptr = memoryAllocator->allocate(size);
+	if (ptr == nullptr) {
+		return false;
+	}
+
+	processMemory[pid] = MemoryRecord{ ptr, size, process->getName() };
+	return true;
+}
+
+void Scheduler::releaseProcessMemory(int pid)
+{
+	if (memoryAllocator == nullptr) {
+		return;
+	}
+
+	std::lock_guard<std::mutex> lock(memoryMutex);
+	auto it = processMemory.find(pid);
+	if (it == processMemory.end()) {
+		return;
+	}
+
+	memoryAllocator->deallocate(it->second.ptr);
+	processMemory.erase(it);
+}
+
+void Scheduler::writeMemorySnapshot()
+{
+	if (memoryAllocator == nullptr) {
+		return;
+	}
+
+	std::vector<std::pair<size_t, MemoryRecord>> withAddresses;
+	size_t maxSize = 0;
+	size_t occupied = 0;
+
+	{
+		std::lock_guard<std::mutex> lock(memoryMutex);
+		maxSize = memoryAllocator->getMaxSize();
+		withAddresses.reserve(processMemory.size());
+		for (const auto& entry : processMemory) {
+			const MemoryRecord& record = entry.second;
+			withAddresses.emplace_back(memoryAllocator->addressOf(record.ptr), record);
+			occupied += record.size;
+		}
+	}
+
+	std::sort(withAddresses.begin(), withAddresses.end(),
+		[](const auto& a, const auto& b) { return a.first > b.first; });
+
+	const size_t externalFragmentation = (maxSize >= occupied) ? (maxSize - occupied) : 0;
+
+	std::lock_guard<std::mutex> snapshotLock(memorySnapshotMutex);
+	const int qq = ++memoryStampCounter;
+
+	std::ostringstream out;
+	out << "Timestamp: (" << buildTimestamp() << ")\n";
+	out << "Number of processes in memory: " << withAddresses.size() << '\n';
+	out << "Total external fragmentation in KB: " << externalFragmentation << "\n\n";
+	out << "----end---- = " << maxSize << "\n\n";
+
+	for (const auto& entry : withAddresses) {
+		const size_t address = entry.first;
+		const MemoryRecord& record = entry.second;
+		out << (address + record.size) << '\n';
+		out << record.name << '\n';
+		out << address << "\n\n";
+	}
+
+	out << "----start----- = 0\n";
+
+	std::ostringstream fileName;
+	fileName << "memory_stamp_" << std::setfill('0') << std::setw(2) << qq << ".txt";
+
+	std::ofstream file(fileName.str(), std::ios::trunc);
+	if (file.is_open()) {
+		file << out.str();
+	}
 }
 
 void Scheduler::updateProcessState(const std::shared_ptr<Process>& process, ProcessState state, int coreId)
@@ -163,7 +267,8 @@ void Scheduler::updateProcessState(const std::shared_ptr<Process>& process, Proc
 	if (registry) {
 		if (state == ProcessState::Running) {
 			registry->updateRunning(process->getPID(), coreId, process->getCompletedInstructions());
-		} else if (state == ProcessState::Finished) {
+		}
+		else if (state == ProcessState::Finished) {
 			registry->markFinished(process->getPID(), process->getCompletedInstructions());
 		}
 	}
@@ -198,7 +303,7 @@ void Scheduler::schedulerLoop()
 					}
 				}
 				return false;
-			});
+				});
 
 			if (stopRequested) {
 				break;
@@ -207,20 +312,42 @@ void Scheduler::schedulerLoop()
 			for (int coreId = 0; coreId < numCores && !readyQueue.empty(); ++coreId) {
 				auto& worker = workers[coreId];
 				std::lock_guard<std::mutex> workerLock(worker->mutex);
-				if (!worker->hasWork && !worker->stopRequested) {
-					nextProcess = readyQueue.front();
-					readyQueue.pop_front();
-					targetCore = coreId;
-					worker->assignedProcess = nextProcess;
-					worker->hasWork = true;
-					break;
+				if (worker->hasWork || worker->stopRequested) {
+					continue;
 				}
+
+				std::shared_ptr<Process> candidate = readyQueue.front();
+				readyQueue.pop_front();
+
+				if (!tryAcquireMemory(candidate)) {
+					// Memory is full and this process isn't already
+					// resident: no backing store, so it goes to the back
+					// of the ready queue and we try the next idle core
+					// against whatever is now at the front instead.
+					readyQueue.push_back(candidate);
+					continue;
+				}
+
+				nextProcess = candidate;
+				targetCore = coreId;
+				worker->assignedProcess = nextProcess;
+				worker->hasWork = true;
+				break;
 			}
 		}
 
 		if (nextProcess && targetCore >= 0) {
 			updateProcessState(nextProcess, ProcessState::Running, targetCore);
 			workers[targetCore]->cv.notify_one();
+		}
+		else {
+			// Nothing could be dispatched this pass, most likely because
+			// memory is full. Avoid busy-spinning while we wait for a
+			// running process to finish and free its memory.
+			std::lock_guard<std::mutex> queueLock(queueMutex);
+			if (!readyQueue.empty()) {
+				std::this_thread::sleep_for(std::chrono::milliseconds(20));
+			}
 		}
 
 		if (isFinished()) {
