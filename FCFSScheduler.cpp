@@ -19,7 +19,7 @@ void FCFSScheduler::workerLoop(int coreId)
 			std::unique_lock<std::mutex> workerLock(worker->mutex);
 			worker->cv.wait(workerLock, [&]() {
 				return worker->hasWork || worker->stopRequested;
-			});
+				});
 
 			if (worker->stopRequested) {
 				break;
@@ -36,6 +36,7 @@ void FCFSScheduler::workerLoop(int coreId)
 			}
 
 			updateProcessState(process, ProcessState::Finished, coreId);
+			releaseProcessMemory(process->getPID());
 		}
 
 		{

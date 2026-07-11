@@ -39,12 +39,17 @@ void RoundRobinScheduler::workerLoop(int coreId)
 
 			if (process->hasFinished()) {
 				updateProcessState(process, ProcessState::Finished, coreId);
+				releaseProcessMemory(process->getPID());
 			}
 			else {
 				updateProcessState(process, ProcessState::Waiting, -1);
 				std::lock_guard<std::mutex> queueLock(queueMutex);
 				readyQueue.push_back(process); // back of the line
 			}
+
+			// A quantum cycle has just elapsed on this core; snapshot the
+			// overall memory state per the memory manager spec.
+			writeMemorySnapshot();
 		}
 
 		{
