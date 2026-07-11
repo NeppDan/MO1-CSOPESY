@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <unordered_map>
 #include "IMemoryAllocator.h"
 
 class FlatMemoryAllocator : public IMemoryAllocator
@@ -11,12 +12,13 @@ public:
 	void* allocate(size_t size) override;
 	void deallocate(void* ptr) override;
 	std::string visualizeMemory() override;
-	
+	size_t getMaxSize() const override;
+	size_t addressOf(void* ptr) const override;
 
 private:
 	size_t maximumSize;
 	size_t allocatedSize;
-	std::vector<char>memory;
+	std::vector<char> memory;
 	std::vector<bool> allocationMap;
 	std::unordered_map<size_t, size_t> allocationSizes;
 
