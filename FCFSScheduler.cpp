@@ -1,5 +1,8 @@
 #include "FCFSScheduler.h"
 
+#include <chrono>
+#include <thread>
+
 
 FCFSScheduler::FCFSScheduler(int cores)
 	: Scheduler(cores)
@@ -29,10 +32,19 @@ void FCFSScheduler::workerLoop(int coreId)
 		}
 
 		if (process) {
+			int executionDelayMs = 0;
+			if (appState != nullptr && appState->config != nullptr) {
+				executionDelayMs = appState->config->delayPerExec;
+			}
+			if (executionDelayMs <= 0) {
+				executionDelayMs = 20;
+			}
+
 			while (!process->hasFinished()) {
 				process->executeCurrentInstruction(coreId);
 				process->moveToNextInstruction();
 				updateProcessState(process, ProcessState::Running, coreId);
+				std::this_thread::sleep_for(std::chrono::milliseconds(executionDelayMs));
 			}
 
 			updateProcessState(process, ProcessState::Finished, coreId);

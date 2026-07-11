@@ -282,8 +282,7 @@ void Scheduler::updateProcessState(const std::shared_ptr<Process>& process, Proc
 void Scheduler::schedulerLoop()
 {
 	while (true) {
-		std::shared_ptr<Process> nextProcess;
-		int targetCore = -1;
+		std::vector<std::pair<int, std::shared_ptr<Process>>> dispatchedProcesses;
 
 		{
 			std::unique_lock<std::mutex> queueLock(queueMutex);
@@ -328,17 +327,17 @@ void Scheduler::schedulerLoop()
 					continue;
 				}
 
-				nextProcess = candidate;
-				targetCore = coreId;
-				worker->assignedProcess = nextProcess;
+				worker->assignedProcess = candidate;
 				worker->hasWork = true;
-				break;
+				dispatchedProcesses.emplace_back(coreId, candidate);
 			}
 		}
 
-		if (nextProcess && targetCore >= 0) {
-			updateProcessState(nextProcess, ProcessState::Running, targetCore);
-			workers[targetCore]->cv.notify_one();
+		if (!dispatchedProcesses.empty()) {
+			for (const auto& entry : dispatchedProcesses) {
+				updateProcessState(entry.second, ProcessState::Running, entry.first);
+				workers[entry.first]->cv.notify_one();
+			}
 		}
 		else {
 			// Nothing could be dispatched this pass, most likely because
@@ -371,7 +370,7 @@ void Scheduler::tickLoop()
 			maybeSpawnBatchProcess(currentTick);
 		}
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 	}
 }
 

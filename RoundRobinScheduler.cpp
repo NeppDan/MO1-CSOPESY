@@ -1,5 +1,8 @@
 #include "RoundRobinScheduler.h"
 
+#include <chrono>
+#include <thread>
+
 RoundRobinScheduler::RoundRobinScheduler(int cores, int quantumCycles)
 	: Scheduler(cores), quantum(quantumCycles)
 {
@@ -29,11 +32,20 @@ void RoundRobinScheduler::workerLoop(int coreId)
 		}
 
 		if (process) {
+			int executionDelayMs = 0;
+			if (appState != nullptr && appState->config != nullptr) {
+				executionDelayMs = appState->config->delayPerExec;
+			}
+			if (executionDelayMs <= 0) {
+				executionDelayMs = 20;
+			}
+
 			int executed = 0;
 			while (executed < quantum && !process->hasFinished()) {
 				process->executeCurrentInstruction(coreId);
 				process->moveToNextInstruction();
 				updateProcessState(process, ProcessState::Running, coreId);
+				std::this_thread::sleep_for(std::chrono::milliseconds(executionDelayMs));
 				++executed;
 			}
 
