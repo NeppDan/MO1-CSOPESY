@@ -1,20 +1,24 @@
 
 #include "FlatMemoryAllocator.h"
 
-FlatMemoryAllocator::FlatMemoryAllocator(size_t maximumSize) :
-	maximumsSize(maximumSize),
-	allocatedSize(0),
-	memory.reserve(maximumSize),
+FlatMemoryAllocator::FlatMemoryAllocator(size_t maximumSize) : maximumSize(maximumSize), allocatedSize(0)
+{
+	memory.resize(maximumSize);
+	allocationMap.resize(maximumSize);
 	initializeMemory();
-{}
+}
 
 FlatMemoryAllocator::~FlatMemoryAllocator() {
 	memory.clear();
 }
 
-void FlatMemoryAllocator::allocate(size_t size){
-	for (size_t i = 0; i <= maximumsSize - size; ++i) {
-		if (!allocationMap[i] && canAllocateAt(1, size)) {
+void* FlatMemoryAllocator::allocate(size_t size){
+	if (size == 0 || size > maximumSize) {
+		return nullptr;
+	}
+
+	for (size_t i = 0; i <= maximumSize - size; ++i) {
+		if (!allocationMap[i] && canAllocateAt(i, size)) {
 			allocateAt(i, size);
 			return &memory[i];
 		}
@@ -25,14 +29,14 @@ void FlatMemoryAllocator::allocate(size_t size){
 
 void FlatMemoryAllocator::deallocate(void* ptr) {
 	size_t index = static_cast<char*>(ptr) - &memory[0];
-	if (allocationMap[index]) {
+	if (index < allocationMap.size() && allocationMap[index]) {
 		deallocateAt(index);
 	}
 }
 
 
-void FlatMemoryAllocator::visualizeMemory(){
-	sreturn std::string(memory.begin(), memory.end());
+std::string FlatMemoryAllocator::visualizeMemory(){
+	return std::string(memory.begin(), memory.end());
 }
 
 void FlatMemoryAllocator::initializeMemory() {
@@ -46,9 +50,20 @@ bool FlatMemoryAllocator::canAllocateAt(size_t index, size_t size) const {
 
 void FlatMemoryAllocator::allocateAt(size_t index, size_t size) {
 	std::fill(allocationMap.begin() + index, allocationMap.begin() + index + size, true);
+	std::fill(memory.begin() + index, memory.begin() + index + size, '#'); // '#' represents used memory
+	allocationSizes[index] = size;
 	allocatedSize += size;
 }
 
 void FlatMemoryAllocator::deallocateAt(size_t index) {
-	allocationMap[index];
+	auto it = allocationSizes.find(index);
+	if (it == allocationSizes.end()) {
+		return;
+	}
+	size_t size = it->second;
+
+	std::fill(allocationMap.begin() + index, allocationMap.begin() + index + size, false);
+	std::fill(memory.begin() + index, memory.begin() + index + size, '.');
+	allocatedSize -= size;
+	allocationSizes.erase(it);
 }
