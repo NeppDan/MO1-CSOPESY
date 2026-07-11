@@ -12,7 +12,7 @@
 #include "ProcessFactory.h"
 #include "FCFSScheduler.h"
 #include "RoundRobinScheduler.h"
-
+#include "FlatMemoryAllocator.h"
 namespace {
 
 std::string trim(const std::string& str)
@@ -115,6 +115,18 @@ bool parseConfig(const std::string& fileName, Config& config, std::string& error
     }
     if (config.delayPerExec < 0) {
         errorMessage = "delay-per-exec must be 0 or greater.";
+        return false;
+    }
+    if (config.maxOverallMem < 1) {
+        errorMessage = "max-overall-mem must be at least 1.";
+        return false;
+    }
+    if (config.memPerFrame < 1) {
+        errorMessage = "mem-per-frame must be at least 1.";
+        return false;
+    }
+    if (config.memPerProc < 1 || config.memPerProc > config.maxOverallMem) {
+        errorMessage = "mem-per-proc must be between 1 and max-overall-mem.";
         return false;
     }
 
@@ -309,6 +321,7 @@ int main()
 
     std::unique_ptr<FCFSScheduler> fcfsScheduler;
     std::unique_ptr<RoundRobinScheduler> rrScheduler;
+    std::unique_ptr<IMemoryAllocator> memoryAllocator;
     bool useRoundRobin = false;
     bool initialized = false;
     bool schedulerRunning = false;
@@ -381,17 +394,20 @@ int main()
             initialized = true;
             appState.initialized = true;
             useRoundRobin = (config.scheduler == "rr");
+            memoryAllocator = std::make_unique<FlatMemoryAllocator>(config.maxOverallMem);
             if (useRoundRobin) {
                 rrScheduler = std::make_unique<RoundRobinScheduler>(config.numCpu, config.quantumCycles);
                 rrScheduler->setRegistry(&registry);
                 rrScheduler->setAppState(&appState);
                 rrScheduler->setBatchGenerationEnabled(false);
+                rrScheduler->setMemoryAllocator(memoryAllocator.get());
                 fcfsScheduler.reset();
             } else {
                 fcfsScheduler = std::make_unique<FCFSScheduler>(config.numCpu);
                 fcfsScheduler->setRegistry(&registry);
                 fcfsScheduler->setAppState(&appState);
                 fcfsScheduler->setBatchGenerationEnabled(false);
+                fcfsScheduler->setMemoryAllocator(memoryAllocator.get());
                 rrScheduler.reset();
             }
             processCounter = 1;
