@@ -41,6 +41,7 @@ public:
 	void setTotalInstructions(int totalInstructionsCount);
 
 	int getCurrentInstructionSleepTicks() const;
+	size_t getMemoryRequired() const;
 
 	SymbolTable& getSymbolTable();
 };

@@ -10,7 +10,6 @@ Process::Process(const std::string& processName, int processId, int numInstructi
     instructionCounter(0),
     outputFileName(processName + ".txt"),
     memoryRequired(memoryRequired)
-
 {
     std::ofstream file(outputFileName, std::ios::trunc);
     if (file.is_open()) {
@@ -107,4 +106,9 @@ int Process::getCurrentInstructionSleepTicks() const
         return 0;
     }
     return instructionList[counter]->getSleepTicks();
+}
+
+size_t Process::getMemoryRequired() const
+{
+    return memoryRequired;
 }

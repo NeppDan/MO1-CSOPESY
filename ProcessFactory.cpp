@@ -67,13 +67,13 @@ std::shared_ptr<Process> ProcessFactory::createDummyProcess(
 {
 	seedRandom();
 	if (isFileUploadRubricConfig(config)) {
-		auto process = std::make_shared<Process>(name, index, 600);
+		auto process = std::make_shared<Process>(name, index, 600, config.memPerProc);
 		seedRubricVariables(*process);
 		appendRubricInstructionSet(process);
 		return process;
 	}
 
-	auto process = std::make_shared<Process>(name, index, config.minIns + (rand() % (config.maxIns - config.minIns + 1)));
+	auto process = std::make_shared<Process>(name, index, config.minIns + (rand() % (config.maxIns - config.minIns + 1)), config.memPerProc);
 	for (int instructionIndex = 0; instructionIndex < process->getTotalInstructions(); ++instructionIndex) {
 		struct DummyInstruction : public ICommand {
 			std::string processName;
