@@ -152,7 +152,7 @@ void printBanner()
     std::cout << "Mabeza, Noreen\n";
     std::cout << "Namuag, Leigh\n";
     std::cout << "Tiopes, Matthew\n\n";
-    std::cout << "Last updated: March 24, 2026\n";
+    std::cout << "Last updated: July 11, 2026\n";
     std::cout << "-----------------------------------------------------------------------\n";
 }
 
@@ -342,12 +342,13 @@ int main()
         if (!schedulerRunning) {
             return;
         }
+    
         if (useRoundRobin) {
-            rrScheduler->stop();
+            rrScheduler->setBatchGenerationEnabled(false);
         } else {
-            fcfsScheduler->stop();
+            fcfsScheduler->setBatchGenerationEnabled(false);
         }
-        schedulerRunning = false;
+          
     };
 
     auto addProcessToActiveScheduler = [&](const std::shared_ptr<Process>& process) {
@@ -381,6 +382,11 @@ int main()
         }
 
         if (command == "exit") {
+            if (useRoundRobin) {
+            rrScheduler->stop();
+            } else {
+            fcfsScheduler->stop();
+            }
             break;
         }
 
