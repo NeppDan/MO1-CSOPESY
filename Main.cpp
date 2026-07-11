@@ -80,6 +80,12 @@ bool parseConfig(const std::string& fileName, Config& config, std::string& error
                 config.maxIns = std::stoi(value);
             } else if (key == "delay-per-exec" || key == "delays-per-exec") {
                 config.delayPerExec = std::stoi(value);
+            } else if (key == "max-overall-mem"){
+                config.maxOverallMem = std::stoull(value);
+            } else if (key == "mem-per-frame"){
+                config.memPerFrame = std::stoull(value);
+            } else if (key == "mem-per-proc"){
+                config.memPerProc = std::stoull(value);
             }
         } catch (const std::exception&) {
             errorMessage = "Invalid value in config.txt for key: " + key;

@@ -11,6 +11,7 @@ public:
 	void* allocate(size_t size) override;
 	void deallocate(void* ptr) override;
 	std::string visualizeMemory() override;
+	
 
 private:
 	size_t maximumSize;
